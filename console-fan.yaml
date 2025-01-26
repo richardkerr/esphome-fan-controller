@@ -1,8 +1,8 @@
 substitutions:
-  friendly_name: Console Fan
+  friendly_name: Server Fan
 
 esphome:
-  name: console-fan
+  name: server-fan
 
 # Throttle writing parameters to the internal flash memory to reduce ESP memory wear / degradation
 preferences:
@@ -37,7 +37,14 @@ wifi:
   # wifi_password: "XXXXXXX"
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  domain: .not.home
 
+
+i2c:
+#  scl: GPIO22
+  scan: true
+  id: bs_a
+    
 number:
 
   ## OPTIONAL:
@@ -182,7 +189,7 @@ sensor:
     name: $friendly_name Fan Speed 1
     accuracy_decimals: 0
     filters:
-      - multiply: 0.5  # Depending on how many pulses the fan sends per round - should be 0.5 or 1 - try...
+      - multiply: 1  # Depending on how many pulses the fan sends per round - should be 0.5 or 1 - try...
 
   - platform: pulse_counter
     pin: 
@@ -233,8 +240,8 @@ sensor:
     accuracy_decimals: 0
 
   # GET TEMP/HUMIDITY FROM DHT11
-  - platform: dht
-    pin: GPIO33
+  - platform: bme280_i2c
+    address: 0x76
     temperature:
       name: "Temperature"
       id: console_fan_temperature
@@ -251,6 +258,10 @@ sensor:
       name: "Humidity"
       id: console_fan_humidity
 
+    pressure:
+      name: "Pressure"
+      id: console_fan_presure
+
     # the DHT11 can only be read every 1s. Use 1.3s to be safe.
     update_interval: 1.3s
 
@@ -262,6 +273,11 @@ sensor:
     unit_of_measurement: "%"
     id: fan_speed_pwm_voltage
 
+power_supply:
+  - id: mosfet_power_supply
+    pin: GPIO32
+
+
 output:
   # Wire this pin (13) into the PWM pin of your 12v fan
   # ledc is the name of the pwm output system on an esp32
@@ -269,13 +285,15 @@ output:
     id: console_fan_speed
     pin: GPIO13
 
+    power_supply: mosfet_power_supply
+
     # 25KHz is standard PC fan frequency, minimises buzzing
     frequency: "25000 Hz" 
 
     # my fans stop working below 13% powerful.
     # also they're  powerful and loud, cap their max speed to 80%
     min_power: 13%
-    max_power: 80%
+    max_power: 100%
 
     # At 0, actually turn it off, otherwise the power keeps going.
     zero_means_zero: true
